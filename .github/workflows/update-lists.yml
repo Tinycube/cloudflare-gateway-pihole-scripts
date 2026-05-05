@@ -1,0 +1,50 @@
+name: Update lists
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at midnight
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout upstream repo
+        uses: actions/checkout@v4
+        with:
+          repository: mrrfv/cloudflare-gateway-pihole-scripts
+          ref: main
+
+      - name: Get Node Version
+        run: echo "NODE_VERSION=$(cat .node-version)" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download blocklists
+        run: node download_lists.js
+        env:
+          BLOCKLIST_URLS: ${{ vars.BLOCKLIST_URLS }}
+          ALLOWLIST_URLS: ${{ vars.ALLOWLIST_URLS }}
+
+      - name: Delete old Gateway lists and rules
+        run: node cf_gateway_rule_delete.js && node cf_list_delete.js
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Upload new lists
+        run: node cf_list_create.js
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create Gateway rule
+        run: node cf_gateway_rule_create.js
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
