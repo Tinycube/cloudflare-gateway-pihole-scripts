@@ -1,0 +1,4 @@
+nimbus.bitdefender.net
+cdn.jsdelivr.net
+fonts.googleapis.com
+fonts.gstatic.com
